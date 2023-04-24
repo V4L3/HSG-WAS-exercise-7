@@ -29,7 +29,7 @@ class AntColony:
         for i in range(ant_population):
             
             # Initialize an ant on a random initial location 
-            ant = Ant(self.alpha, self.beta, None)
+            ant = Ant(self.alpha, self.beta, i+1)
 
             # Position the ant in the environment of the ant colony so that it can move around
             ant.join(self.environment)
@@ -40,18 +40,30 @@ class AntColony:
     # Solve the ant colony optimization problem  
     def solve(self):
 
+        best_of_iterations = []
+
+        for i in range(self.iterations):
+            print("Iteration: " + str(i))
+            for ant in self.ants:
+                ant.reset()
+                ant.run()
+
+            Environment.update_pheromone_map(self=self.environment, ants=self.ants)
+        
+        best_ant = min(best_of_iterations, key=lambda ant: ant.travelled_distance)
+
         # The solution will be a list of the visited cities
-        solution = []
+        solution = best_ant.visited_locations
 
         # Initially, the shortest distance is set to infinite
-        shortest_distance = np.inf
+        shortest_distance = best_ant.travelled_distance
 
         return solution, shortest_distance
 
 
 def main():
     # Intialize the ant colony
-    ant_colony = AntColony(1, None, None, None, None)
+    ant_colony = AntColony(48, 50, 1.0, 2.0, 0.5)
 
     # Solve the ant colony optimization problem
     solution, distance = ant_colony.solve()
