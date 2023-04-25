@@ -1,7 +1,6 @@
-import math
 import tsplib95
-import tspsolve
 import numpy as np
+import tspsolve
 
 # Class representing the environment of the ant colony
 """
@@ -9,48 +8,34 @@ import numpy as np
 """
 class Environment:
     def __init__(self, rho):
+        self.rho = rho
 
-        self.rho =rho
-        self.evaporation_rate = 0.5
-        
         # Initialize the environment topology
         self.topology = tsplib95.load('att48-specs/att48.tsp')
-        self.G = self.topology.get_graph()
-        # print(self.G.nodes[1]["coord"][0])
-        # Intialize the pheromone map in the environment
-        self.pheromone_map = self.initialize_pheromone_map()
-        # self.update_pheromone_map()
-        # print(self.pheromone_map)
-        pass 
+        self.dimension = self.topology.dimension
+        self.coordinates = list(self.topology.node_coords.values())
 
-    # Intialize the pheromone trails in the environment
+        # Initialize the pheromone map in the environment
+        self.initialize_pheromone_map()
+
     def initialize_pheromone_map(self):
-        print("init pheromone map")
-        pheromone_map = []
-        initial_pheromone_value = len(self.G.nodes) / self.c_n_n()
-        num_nodes = 48
-        for i in range(num_nodes):
-            row = [initial_pheromone_value] * num_nodes
-            pheromone_map.append(row)
-        return pheromone_map
+        self.pheromone_map = []
+        value = self.dimension / self.c_n_n()
+        self.pheromone_map = np.full((self.dimension, self.dimension), value)
 
     # Update the pheromone trails in the environment
-    def update_pheromone_map(self, ants):
+    def update_pheromone_map(self, ants: list):
         self.trigger_pheromone_evaporation()
 
         for ant in ants:
-            for idx, node in enumerate(ant.visited_locations):
-                new_pheromone_value = 1 / ant.travelled_distance
-                if(idx >= 0):
-                    i = ant.visited_locations[idx]
-                    j = ant.visited_locations[46]
-                else:
-                    i = ant.visited_locations[idx-1]
-                    j = ant.visited_locations[idx]
-                self.pheromone_map[i-1][j-1] += new_pheromone_value
-                self.pheromone_map[j-1][i-1] += new_pheromone_value
+            pheromone_updates = np.zeros_like(self.pheromone_map)
+            for i, j in zip(ant.visited_locations[:-1], ant.visited_locations[1:]):
+                added_pheromone = 1 / ant.travelled_distance
+                pheromone_updates[i-1][j-1] += added_pheromone
+                pheromone_updates[j-1][i-1] += added_pheromone
+            self.pheromone_map += pheromone_updates
 
-    # Trigger the pheromone evaporation
+
     def trigger_pheromone_evaporation(self):
         for i, row in enumerate(self.pheromone_map):
             for j, col in enumerate(row):
@@ -59,25 +44,25 @@ class Environment:
     # Get the pheromone trails in the environment
     def get_pheromone_map(self):
         return self.pheromone_map
+
+    def get_distance(self, i, j):
+        return self.topology.get_weight(i, j)
     
     # Get the environment topology
     def get_possible_locations(self):
-        # print("reading locations")
-        return self.G.nodes
-    
+        return list(self.topology.get_nodes())
+
     def c_n_n(self):
-        num_nodes = 48
-        cost_matrix = np.empty((num_nodes, num_nodes))
-        for i in range(1, num_nodes + 1):
-            for j in range(1, num_nodes + 1):
-                cost_matrix[i-1][j-1] = self.topology.get_weight(i, j)
-
+        cost_matrix = np.array([
+            [self.get_distance(i, j) for i in range(1, self.dimension + 1)]
+            for j in range(1, self.dimension + 1)
+        ])
         path = tspsolve.nearest_neighbor(cost_matrix)
-
-        total_cost = 0
-        for i in range(1, len(path)):
-            current_node = path[i]
-            previous_node = path[i-1]
-            total_cost += cost_matrix[previous_node, current_node]
-
+        total_cost = np.sum([
+            cost_matrix[path[i - 1], path[i]] for i in range(self.dimension)
+        ])
         return total_cost
+
+
+if __name__ == '__main__':
+    environment = Environment(0.1)

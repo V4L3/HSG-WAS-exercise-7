@@ -1,3 +1,4 @@
+import random
 import numpy as np
 
 from environment import Environment
@@ -39,26 +40,32 @@ class AntColony:
 
     # Solve the ant colony optimization problem  
     def solve(self):
-
-        best_of_iterations = []
+        shortest_distance = np.inf
+        best_path = []
 
         for i in range(self.iterations):
             print("Iteration: " + str(i))
-            for ant in self.ants:
-                ant.reset()
+            local_shortest_path = np.inf
+            for j, ant in enumerate(self.ants):
                 ant.run()
 
-            Environment.update_pheromone_map(self=self.environment, ants=self.ants)
-        
-        best_ant = min(best_of_iterations, key=lambda ant: ant.travelled_distance)
+                if ant.travelled_distance < local_shortest_path:
+                    local_shortest_path = ant.travelled_distance
 
-        # The solution will be a list of the visited cities
-        solution = best_ant.visited_locations
+                if ant.travelled_distance < shortest_distance:
+                    shortest_distance = ant.travelled_distance
+                    best_path = ant.visited_locations
 
-        # Initially, the shortest distance is set to infinite
-        shortest_distance = best_ant.travelled_distance
+            print("Shortest path length: " + str(local_shortest_path))
 
-        return solution, shortest_distance
+            self.environment.update_pheromone_map(self.ants)
+
+            if i != self.iterations - 1:
+                for ant in self.ants:
+                    ant.reset()
+
+
+        return best_path, shortest_distance
 
 
 def main():
